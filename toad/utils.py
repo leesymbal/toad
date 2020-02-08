@@ -7,12 +7,12 @@ from functools import wraps
 
 from multiprocessing import Pool, current_process, cpu_count
 
-
+#全大写变量表示常量
 CONTINUOUS_NUM = 10
 FEATURE_THRESHOLD = 1e-7
 NAN_REPLACEMENT = -2e10
 
-
+#所有可能的空值做成一个列表
 NAN_LIST = [
     'nan',
     'Nan',
@@ -26,7 +26,7 @@ NAN_LIST = [
 class Parallel:
     def __init__(self):
         self.ismain = False
-        self.results = []
+        self.results = []       #[]和list()是等价的
         self.pro = current_process()
 
         if self.pro.name == 'MainProcess':
@@ -37,8 +37,8 @@ class Parallel:
     def apply(self, func, args = (), kwargs = {}):
         if not self.ismain:
             r = func(*args, **kwargs)
-        else:
-            r = self.pool.apply_async(func, args = args, kwds = kwargs)
+        else:    #注意此处的逻辑，当ismain是true时，才会有self.pool
+            r = self.pool.apply_async(func, args = args, kwds = kwargs)     #r是一个实例
 
         self.results.append(r)
 
@@ -48,11 +48,11 @@ class Parallel:
 
         self.pool.close()
         self.pool.join()
-
+        #实例调用get()方法返回self._value
         return [r.get() for r in self.results]
 
 
-
+#返回数组中等于指定值的个数。如果个数为0且默认值存在，返回默认值
 def np_count(arr, value, default = None):
     c = (arr == value).sum()
 
@@ -61,41 +61,42 @@ def np_count(arr, value, default = None):
 
     return c
 
-
+#把各种空值统一替换为np.nan.
 def _replace_nan(arr):
-    a = np.copy(arr)
+    a = np.copy(arr)      #np.copy使a的改变不影响arr
     a[a == NAN_REPLACEMENT] = np.nan
     return a
 
 
 def has_nan(arr):
-    return np.any(pd.isna(arr))
+    return np.any(pd.isna(arr))    #np.any()  存在true就返回true    pd.isna()    返回一个布尔值数组 
 
-
+#唯一化，并把nan排在前面，后面也是从大到小
 def np_unique(arr, **kwargs):
-    arr = to_ndarray(arr)
+    arr = to_ndarray(arr)      #首先进行转换   
 
-    if not has_nan(arr):
+    if not has_nan(arr):       #没有空值直接返回，注意np.unique默认从大到小排序
         return np.unique(arr, **kwargs)
 
-    arr[np.isnan(arr)] = NAN_REPLACEMENT
+    arr[np.isnan(arr)] = NAN_REPLACEMENT      #空值用指定值替换
 
-    res = np.unique(arr, **kwargs)
+    res = np.unique(arr, **kwargs)          
 
     if isinstance(res, tuple):
         u = _replace_nan(res[0])
-        return (u, *res[1:])
-
+        return (u, *res[1:])    
+    #这两处用_replace_nan再把NAN_REPLACEMENT替换回来
     return _replace_nan(res)
 
-
+#返回指定数据类型的数组
 def to_ndarray(s, dtype = None):
     """
     """
+    #首先针对s的类型进行处理
     if isinstance(s, np.ndarray):
         arr = np.copy(s)
     elif isinstance(s, pd.core.base.PandasObject):
-        arr = np.copy(s.values)
+        arr = np.copy(s.values)      #df.values会返回一个array
     else:
         arr = np.array(s)
 
@@ -103,7 +104,7 @@ def to_ndarray(s, dtype = None):
     if dtype is not None:
         arr = arr.astype(dtype)
     # covert object type to str
-    elif arr.dtype.type is np.object_:
+    elif arr.dtype.type is np.object_:   #没有指定dtype且...
         arr = arr.astype(np.str)
 
     return arr
