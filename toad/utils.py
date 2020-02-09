@@ -71,7 +71,7 @@ def _replace_nan(arr):
 def has_nan(arr):
     return np.any(pd.isna(arr))    #np.any()  存在true就返回true    pd.isna()    返回一个布尔值数组 
 
-#唯一化，并把nan排在前面，后面也是从大到小
+#唯一化，并把nan排在前面，后面从大到小排序
 def np_unique(arr, **kwargs):
     arr = to_ndarray(arr)      #首先进行转换   
 
@@ -109,7 +109,7 @@ def to_ndarray(s, dtype = None):
 
     return arr
 
-
+#指定值替换nan
 def fillna(feature, by = -1):
     # copy array
     copied = np.copy(feature)
@@ -124,20 +124,20 @@ def bin_by_splits(feature, splits):
     """Bin feature by split points
     """
     feature = fillna(feature)
-    return np.digitize(feature, splits)
+    return np.digitize(feature, splits)         #返回特征位置，np.digitize([1,3,7],[2,5])得[0, 1, 2]
 
-
+#按照特征值排序，相邻特征值相同略过，取不等相邻特征值的平均值为分裂点
 def feature_splits(feature, target):
     """find posibility spilt points
     """
     feature = to_ndarray(feature)
     target = to_ndarray(target)
 
-    matrix = np.vstack([feature, target])
-    matrix = matrix[:, matrix[0,:].argsort()]
+    matrix = np.vstack([feature, target])          
+    matrix = matrix[:, matrix[0,:].argsort()]       #按照第一行，从小到大重新排序
 
     splits_values = []
-    for i in range(1, len(matrix[0])):
+    for i in range(1, len(matrix[0])):       
         # if feature value is almost same, then skip
         if matrix[0,i] <= matrix[0, i-1] + FEATURE_THRESHOLD:
             continue
@@ -149,7 +149,7 @@ def feature_splits(feature, target):
 
     return np.unique(splits_values)
 
-
+#生成一个有三个列且可迭代的df
 def iter_df(dataframe, feature, target, splits):
     """iterate dataframe by split points
 
@@ -163,10 +163,10 @@ def iter_df(dataframe, feature, target, splits):
     df[feature] = 0
 
     for v in splits:
-        df.loc[df['source'] < v, feature] = 1
+        df.loc[df['source'] < v, feature] = 1     #如果dataframe[feature]<v,则令df的feature=1
         yield df, v
 
-
+#迭代返回由0，1组成的bin
 def inter_feature(feature, splits):
     splits.sort()
     bin = np.zeros(len(feature))
@@ -178,18 +178,18 @@ def inter_feature(feature, splits):
 
 def is_continuous(series):
     series = to_ndarray(series)
-    if not np.issubdtype(series.dtype, np.number):
+    if not np.issubdtype(series.dtype, np.number):          #如果不是number类型，直接返回false
         return False
 
     n = len(np.unique(series))
-    return n > CONTINUOUS_NUM or n / series.size > 0.5
+    return n > CONTINUOUS_NUM or n / series.size > 0.5         #如果唯一值大于10或者唯一值大于一半，返回true
     # return n / series.size > 0.5
 
-
+#分离目标变量
 def split_target(frame, target):
     """
     """
-    if isinstance(target, str):
+    if isinstance(target, str): 
         f = frame.drop(columns = target)
         t = frame[target]
     else:
@@ -198,14 +198,14 @@ def split_target(frame, target):
 
     return f, t
 
-
+#如果tuple只有一个元素，那么就返回这个元素
 def unpack_tuple(x):
     if len(x) == 1:
         return x[0]
     else:
         return x
 
-ALPHABET = string.ascii_uppercase + string.digits
+ALPHABET = string.ascii_uppercase + string.digits      #大写字母和数字
 def generate_str(size = 6, chars = ALPHABET):
     return ''.join(np.random.choice(list(chars), size = size))
 
@@ -214,7 +214,7 @@ def support_dataframe(require_target = True):
     """decorator for supporting dataframe
     """
     def decorator(fn):
-        @wraps(fn)
+        @wraps(fn)       #
         def func(frame, *args, **kwargs):
             if not isinstance(frame, pd.DataFrame):
                 return fn(frame, *args, **kwargs)
@@ -238,7 +238,7 @@ def support_dataframe(require_target = True):
 
         return func
 
-    return decorator
+    return decorator      #把函数作为结果返回的是嵌套函数
 
 
 def save_json(contents, file, indent = 4):
@@ -268,7 +268,7 @@ def read_json(file):
 
 
 
-
+#返回np.clip(series,min,max),小于min则等于min,大于max则等于max.用于处理极端值
 def clip(series, value = None, std = None, quantile = None):
     """clip series
 
@@ -305,14 +305,14 @@ def clip(series, value = None, std = None, quantile = None):
 
     return np.clip(series, min, max)
 
-
+#如果参数不是tuple类型，则返回相同两个参数
 def _get_clip_value(params):
     if isinstance(params, tuple):
         return params
     else:
         return params, params
 
-
+#返回日期差，以日计
 def diff_time(base, target, format = None, time = 'day'):
     # if base is not a datetime list
     if not np.issubdtype(base.dtype, np.datetime64):
@@ -327,7 +327,7 @@ def diff_time(base, target, format = None, time = 'day'):
 
     return delta
 
-
+#返回一个只有天数差的df
 def diff_time_frame(base, frame, format = None):
     res = pd.DataFrame()
 
@@ -356,15 +356,15 @@ def bin_to_number(reg = None):
 
         res = re.findall(reg, x)
         l = len(res)
-        res = map(float, res)
+        res = map(float, res)      #转化为浮点数
         if l == 0:
             return np.nan
         else:
-            return sum(res) / l
+            return sum(res) / l         #返回平均值
 
     return func
 
-
+#为拒绝推断生成目标
 def generate_target(size, rate = 0.5, weight = None, reverse = False):
     """generate target for reject inference
 
@@ -388,7 +388,8 @@ def generate_target(size, rate = 0.5, weight = None, reverse = False):
     res = np.zeros(size)
 
     choice_num = int(size * rate)
-    ix = np.random.choice(size, choice_num, replace = False, p = weight)
+    ix = np.random.choice(size, choice_num, replace = False, p = weight)        
+    #size如果是整数表示np.arange(size),choice_num表示要选择的个数，replace表示能否重复选取一个值
     res[ix] = 1
 
     return res
@@ -397,25 +398,26 @@ def generate_target(size, rate = 0.5, weight = None, reverse = False):
 def get_dummies(dataframe, exclude = None, binary_drop = False, **kwargs):
     """get dummies
     """
+    #找出非数值型列
     columns = dataframe.select_dtypes(exclude = 'number').columns
 
     if len(columns) == 0:
         return dataframe
 
     if exclude is not None:
-        columns = columns.difference(exclude)
+        columns = columns.difference(exclude)       #difference为减去
 
     if binary_drop:
-        mask = dataframe[columns].nunique(dropna = False) == 2
+        mask = dataframe[columns].nunique(dropna = False) == 2     #在非数值型列中找出唯一值为2的列，nunique.返回布尔数组 
 
         if mask.sum() != 0:
             dataframe = pd.get_dummies(
                 dataframe,
-                columns = columns[mask],
-                drop_first = True,
+                columns = columns[mask],     #选出二值型列
+                drop_first = True,          #true则get_dummies后该列仍为一列
                 **kwargs,
             )
-            columns = columns[~mask]
+            columns = columns[~mask]        #此处选出非二值型列
 
     data = pd.get_dummies(dataframe, columns = columns, **kwargs)
     return data
