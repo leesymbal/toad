@@ -210,20 +210,20 @@ def generate_str(size = 6, chars = ALPHABET):
     return ''.join(np.random.choice(list(chars), size = size))
 
 
-def support_dataframe(require_target = True):
+def support_dataframe(require_target = True):    #参数用于最内一层函数，即func
     """decorator for supporting dataframe
     """
-    def decorator(fn):
-        @wraps(fn)       #
+    def decorator(fn):      #传入函数fn作为参数
+        @wraps(fn)       #使用@wraps,调用fn的属性时返回自身的，而不是func的
         def func(frame, *args, **kwargs):
             if not isinstance(frame, pd.DataFrame):
                 return fn(frame, *args, **kwargs)
 
             frame = frame.copy()
             if require_target and isinstance(args[0], str):
-                target = frame.pop(args[0])
-                args = (target,) + args[1:]
-            elif 'target' in kwargs and isinstance(kwargs['target'], str):
+                target = frame.pop(args[0])   #frame删除这一列且赋值给target
+                args = (target,) + args[1:]   
+            elif 'target' in kwargs and isinstance(kwargs['target'], str):     #如果以target='xxx'的形式给出
                 kwargs['target'] = frame.pop(kwargs['target'])
 
             res = dict()
@@ -234,7 +234,7 @@ def support_dataframe(require_target = True):
                     r = [r]
 
                 res[col] = r
-            return pd.DataFrame(res)
+            return pd.DataFrame(res)     #返回df
 
         return func
 
