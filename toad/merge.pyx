@@ -35,14 +35,16 @@ def StepMerge(feature, nan = None, n_bins = None, clip_v = None, clip_std = None
 
     if nan is not None:
         feature = fillna(feature, by = nan)
-
+        
+    #使小于min的等于min,大于max的等于max
     feature = clip(feature, value = clip_v, std = clip_std, quantile = clip_q)
-
+    
+    #忽略nan求最大最小值
     max = np.nanmax(feature)
     min = np.nanmin(feature)
 
     step = (max - min) / n_bins
-    return np.arange(min, max, step)[1:]
+    return np.arange(min, max, step)[1:]      #去掉最小值
 
 def QuantileMerge(feature, nan = -1, n_bins = None, q = None):
     """Merge by quantile
@@ -58,7 +60,8 @@ def QuantileMerge(feature, nan = -1, n_bins = None, q = None):
     """
     if n_bins is None and q is None:
         n_bins = DEFAULT_BINS
-
+        
+    #q为分位点
     if q is None:
         step = 1 / n_bins
         q = np.arange(0, 1, step)
@@ -91,14 +94,14 @@ def KMeansMerge(feature, target = None, nan = -1, n_bins = None, random_state = 
         n_clusters = n_bins,
         random_state = random_state
     )
-    model.fit(feature.reshape((-1 ,1)), target)
+    model.fit(feature.reshape((-1 ,1)), target)     #-1表示不指定数目
 
     centers = np.sort(model.cluster_centers_.reshape(-1))
 
     l = len(centers) - 1
     splits = np.zeros(l)
     for i in range(l):
-        splits[i] = (centers[i] + centers[i+1]) / 2
+        splits[i] = (centers[i] + centers[i+1]) / 2        #前面len减去1是因为这里有i+1
 
     return splits
 
@@ -124,17 +127,17 @@ def DTMerge(feature, target, nan = -1, n_bins = None, min_samples = 1):
 
     tree = DecisionTreeClassifier(
         min_samples_leaf = min_samples,
-        max_leaf_nodes = n_bins,
+        max_leaf_nodes = n_bins,            #最大叶子节点
     )
     tree.fit(feature.reshape((-1, 1)), target)
 
-    thresholds = tree.tree_.threshold
-    thresholds = thresholds[thresholds != _tree.TREE_UNDEFINED]
+    thresholds = tree.tree_.threshold      #获得决策树规则
+    thresholds = thresholds[thresholds != _tree.TREE_UNDEFINED]     #  _tree.TREE_UNDEFINED的值为-2
     return np.sort(thresholds)
 
 
 
-
+#此两个修饰符用来关闭cython的边界检查
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cpdef ChiMerge(feature, target, n_bins = None, min_samples = None,
@@ -162,7 +165,7 @@ cpdef ChiMerge(feature, target, n_bins = None, min_samples = None,
     feature = fillna(feature, by = nan)
     target = to_ndarray(target)
 
-
+    #np.unique会返回从小到大排序后的数组
     target_unique = np.unique(target)
     feature_unique = np.unique(feature)
     len_f = len(feature_unique)
@@ -171,9 +174,10 @@ cpdef ChiMerge(feature, target, n_bins = None, min_samples = None,
     cdef double [:,:] grouped = np.zeros((len_f, len_t), dtype=np.float)
 
     for r in range(len_f):
-        tmp = target[feature == feature_unique[r]]
+        tmp = target[feature == feature_unique[r]]    #target[]  中括号内是feature各个唯一值的索引
         for c in range(len_t):
-            grouped[r, c] = (tmp == target_unique[c]).sum()
+            grouped[r, c] = (tmp == target_unique[c]).sum()      
+            #grouped数组中的值为各个唯一的feature所在的索引对应的target数组与各唯一的target相等的个数
 
 
     cdef double [:,:] couple
@@ -186,11 +190,11 @@ cpdef ChiMerge(feature, target, n_bins = None, min_samples = None,
 
     while(True):
         # break loop when reach n_bins
-        if n_bins and len(grouped) <= n_bins:
+        if n_bins and len(grouped) <= n_bins:     #len(grouped)即len_f.唯一特征数<=n_bins就跳出while循环
             break
 
-        # break loop if min samples of groups is greater than threshold
-        if min_samples and c_min(c_sum_axis_1(grouped)) > min_samples:
+        # break loop if min samples of groups is greater than threshold   
+        if min_samples and c_min(c_sum_axis_1(grouped)) > min_samples:      #如果feature中特征的最小重复数大于最小样本数，跳出循环
             break
 
         # Calc chi square for each group
@@ -200,13 +204,13 @@ cpdef ChiMerge(feature, target, n_bins = None, min_samples = None,
         # chi_ix = []
         for i in range(l):
             chi = 0
-            couple = grouped[i:i+2,:]
+            couple = grouped[i:i+2,:]       #取相邻两行,假如couple为[[1,2,3],[4,5,6]]
             total = c_sum(couple)
-            cols = c_sum_axis_0(couple)
-            rows = c_sum_axis_1(couple)
+            cols = c_sum_axis_0(couple)     #cols=[5,7,9]
+            rows = c_sum_axis_1(couple)     #rows=[6,15]
 
-            for j in range(couple.shape[0]):
-                for k in range(couple.shape[1]):
+            for j in range(couple.shape[0]):     #等同 j   in  range(len(rows))
+                for k in range(couple.shape[1]):     #等同 k  in   range(len(cols))
                     e = rows[j] * cols[k] / total
                     if e != 0:
                         chi += (couple[j, k] - e) ** 2 / e
@@ -217,11 +221,11 @@ cpdef ChiMerge(feature, target, n_bins = None, min_samples = None,
 
             chi_list[i] = chi
 
-            if chi == chi_min:
+            if chi == chi_min:        #如果计算出的该相邻卡方值==chi_min，则计算下一个相邻卡方值
                 chi_ix.append(i)
                 continue
 
-            if chi < chi_min:
+            if chi < chi_min:         #如果计算出的该相邻卡方值<chi_min，则令chi_min等于该卡方值
                 chi_min = chi
                 chi_ix = [i]
 
@@ -232,7 +236,7 @@ cpdef ChiMerge(feature, target, n_bins = None, min_samples = None,
 
 
         # break loop when the minimun chi greater the threshold
-        if min_threshold and chi_min > min_threshold:
+        if min_threshold and chi_min > min_threshold:          #跳出while循环
             break
 
         # get indexes of the groups who has the minimun chi
@@ -240,7 +244,7 @@ cpdef ChiMerge(feature, target, n_bins = None, min_samples = None,
         # min_ix = np.where(chi_list == chi_min)[0]
 
         # get the indexes witch needs to drop
-        drop_ix = min_ix + 1
+        drop_ix = min_ix + 1                 #np.array和整数相加依然是np.array
 
 
         # combine groups by indexes
@@ -248,25 +252,26 @@ cpdef ChiMerge(feature, target, n_bins = None, min_samples = None,
         last_ix = retain_ix
         for ix in min_ix:
             # set a new group
-            if ix - last_ix > 1:
+            if ix - last_ix > 1:      #为了处理min_ix里面的相邻值
                 retain_ix = ix
 
             # combine all contiguous indexes into one group
             for p in range(grouped.shape[1]):
-                grouped[retain_ix, p] = grouped[retain_ix, p] + grouped[ix + 1, p]
+                grouped[retain_ix, p] = grouped[retain_ix, p] + grouped[ix + 1, p]   
+                #此处为何是ix+1,答案是为了处理min_ix里面的相邻值，配合前面的if  ix-last_ix>1
 
             last_ix = ix
 
 
         # drop binned groups
-        grouped = np.delete(grouped, drop_ix, axis = 0)
+        grouped = np.delete(grouped, drop_ix, axis = 0)       #删除被合并的索引
         feature_unique = np.delete(feature_unique, drop_ix)
 
 
     return feature_unique[1:]
 
-
-@support_dataframe(require_target = False)
+#装饰器，调用merge时实际调用的是support_dataframe.<locals>.decorator.<locals>.func(frame, *args, **kwargs). func中的fn即为下面的merge函数
+@support_dataframe(require_target = False)    
 def merge(feature, target = None, method = 'dt', return_splits = False, **kwargs):
     """merge feature into groups
 
@@ -283,7 +288,7 @@ def merge(feature, target = None, method = 'dt', return_splits = False, **kwargs
         array: list of split points
     """
     feature = to_ndarray(feature)
-    method = method.lower()
+    method = method.lower()       #将传入的method方法转为小写
 
     if method == 'dt':
         splits = DTMerge(feature, target, **kwargs)
@@ -296,15 +301,15 @@ def merge(feature, target = None, method = 'dt', return_splits = False, **kwargs
     elif method == 'kmeans':
         splits = KMeansMerge(feature, target = target, **kwargs)
     else:
-        splits = np.empty(shape = (0,))
+        splits = np.empty(shape = (0,))      #返回array([], dtype=float64)
 
 
     if len(splits):
-        bins = bin_by_splits(feature, splits)
+        bins = bin_by_splits(feature, splits)        #bin_by_splits返回特征所在箱的位置
     else:
         bins = np.zeros(len(feature))
 
     if return_splits:
-        return bins, splits
+        return bins, splits      
 
     return bins
