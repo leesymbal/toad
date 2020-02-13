@@ -15,7 +15,7 @@ from .utils import to_ndarray, np_count, bin_by_splits, save_json
 EMPTY_BIN = -1
 ELSE_GROUP = 'else'
 
-
+#选择数据类型的装饰器
 def support_select_dtypes(fn):
 
     @wraps(fn)
@@ -27,7 +27,7 @@ def support_select_dtypes(fn):
 
     return func
 
-
+#排除数据类型的装饰器
 def support_exclude(fn):
     @wraps(fn)
     def func(self, X, *args, exclude = None, **kwargs):
@@ -38,7 +38,7 @@ def support_exclude(fn):
 
     return func
 
-
+#保存为json格式的装饰器
 def support_save_to_json(fn):
     @wraps(fn)
     def func(self, *args, to_json = None, **kwargs):
@@ -60,7 +60,7 @@ class WOETransformer(TransformerMixin):
         self.values_ = dict()
         self.woe_ = dict()
     
-
+    #先排除不需要转换的，然后选择数据类型
     @support_exclude
     @support_select_dtypes
     def fit(self, X, y, **kwargs):
@@ -71,23 +71,24 @@ class WOETransformer(TransformerMixin):
             y (str|array-like)
             select_dtypes (str|numpy.dtypes): `'object'`, `'number'` etc. only selected dtypes will be transform,
         """
-        if not isinstance(X, pd.DataFrame):
+        if not isinstance(X, pd.DataFrame):     #如果X不是df
             self.values_, self.woe_ = self._fit_woe(X, y, **kwargs)
             return self
 
-        if isinstance(y, str):
+        if isinstance(y, str):      #分离X与y,y转化为array类型
             X = X.copy()
             y = X.pop(y)
 
         self.values_ = dict()
         self.woe_ = dict()
-
+        
+        #逐个处理X中的特征
         for col in X:
             self.values_[col], self.woe_[col] = self._fit_woe(X[col], y)
 
         return self
 
-    def _fit_woe(self, X, y):
+    def _fit_woe(self, X, y):     #  X，y均为数组类型
         X = to_ndarray(X)
 
         values = np.unique(X)
@@ -117,7 +118,7 @@ class WOETransformer(TransformerMixin):
 
         res = X.copy()
         for col in X:
-            if col in self.values_:
+            if col in self.values_:     #如果col在values_的键中
                 res[col] = self._transform_apply(X[col], self.values_[col], self.woe_[col], **kwargs)
 
         return res
@@ -144,7 +145,8 @@ class WOETransformer(TransformerMixin):
             default = np.max(woe)
 
         # replace unknown group to default value
-        res[np.isin(X, value, invert = True)] = default
+        res[np.isin(X, value, invert = True)] = default        
+        #invert=True表示对结果取反。np.isin(np.isin([1,2,3,4],[2,6],invert=True))得到[ True, False,  True,  True]
 
         for i in range(len(value)):
             res[X == value[i]] = woe[i]
@@ -218,7 +220,7 @@ class Combiner(TransformerMixin):
             y = to_ndarray(y)
 
         uni_val = False
-        if not np.issubdtype(X.dtype, np.number):
+        if not np.issubdtype(X.dtype, np.number):     #如果X不是数值类型
             # transform raw data by woe
             transer = WOETransformer()
             woe = transer.fit_transform(X, y)
