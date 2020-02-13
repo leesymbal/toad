@@ -30,7 +30,7 @@ def gini(target):
     target = to_ndarray(target)
     v, c = np.unique(target, return_counts = True)
 
-    return 1 - ((c / target.size) ** 2).sum()
+    return 1 - ((c / target.size) ** 2).sum()     #c.sum()=target.size
 
 def _gini_cond(feature, target):
     """private conditional gini function
@@ -45,6 +45,7 @@ def _gini_cond(feature, target):
     size = feature.size
 
     value = 0
+    #如果zip后面没有这个星号，则返回的是(array1,array2),zip当成只有一个参数会报错
     for v, c in zip(*np_unique(feature, return_counts = True)):
         target_series = target[feature == v]
         value += c / size * gini(target_series)
@@ -62,7 +63,7 @@ def gini_cond(feature, target):
     Returns:
         number: conditional gini value. If feature is continuous, it will return the best gini value when the feature bins into two groups
     """
-    if not is_continuous(feature):
+    if not is_continuous(feature):       #如果特征是离散的
         return _gini_cond(feature, target)
 
     # find best split for continuous data
@@ -142,8 +143,8 @@ def probability(target, mask = None):
     if mask is None:
         return 1, 1
 
-    counts_0 = np_count(target, 0, default = 1)
-    counts_1 = np_count(target, 1, default = 1)
+    counts_0 = np_count(target, 0, default = 1)     #返回target中0的个数，如果没有就返回1
+    counts_1 = np_count(target, 1, default = 1)     #返回target中1的个数，如果没有就返回1
 
     sub_target = target[mask]
 
@@ -235,7 +236,7 @@ def VIF(frame):
     index = None
     if isinstance(frame, pd.DataFrame):
         index = frame.columns
-        frame = frame.values
+        frame = frame.values       #type为np.ndarray
 
     from statsmodels.stats.outliers_influence import variance_inflation_factor
 
@@ -261,7 +262,8 @@ def column_quality(feature, target, name = 'feature', iv_only = False, **kwargs)
     """
     feature = to_ndarray(feature)
     target = to_ndarray(target)
-
+    
+    #如果feature不是数值类型，就转换成字符串
     if not np.issubdtype(feature.dtype, np.number):
         feature = feature.astype(str)
 
