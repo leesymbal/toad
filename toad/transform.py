@@ -88,7 +88,7 @@ class WOETransformer(TransformerMixin):
 
         return self
 
-    def _fit_woe(self, X, y):     #  X，y均为数组类型
+    def _fit_woe(self, X, y):     #  X，y均为数组类型，返回的也是数组
         X = to_ndarray(X)
 
         values = np.unique(X)
@@ -113,7 +113,7 @@ class WOETransformer(TransformerMixin):
         Returns:
             array-like
         """
-        if not isinstance(self.values_, dict):
+        if not isinstance(self.values_, dict):    #如果values_不是字典类型，此时X是数组类型
             return self._transform_apply(X, self.values_, self.woe_, **kwargs)
 
         res = X.copy()
@@ -157,7 +157,7 @@ class WOETransformer(TransformerMixin):
     @support_save_to_json
     def export(self):
         if not isinstance(self.values_, dict):
-            return dict(zip(self.values_, self.woe_))
+            return dict(zip(self.values_, self.woe_))       #zip之后数据以tuple形式存在
 
         d = dict()
         for col in self.values_:
@@ -190,7 +190,7 @@ class Combiner(TransformerMixin):
             self
         """
         if not isinstance(X, pd.DataFrame):
-            self.splits_ = self._merge(X, y = y, **kwargs)
+            self.splits_ = self._merge(X, y = y, **kwargs)    #此时X为数组形式
             return self
 
         if isinstance(y, str):
@@ -199,7 +199,7 @@ class Combiner(TransformerMixin):
 
         self.splits_ = dict()
         for col in X:
-            self.splits_[col] = self._merge(X[col], y = y, **kwargs)
+            self.splits_[col] = self._merge(X[col], y = y, **kwargs)     #此时X为DF类型
 
         return self
 
@@ -219,7 +219,7 @@ class Combiner(TransformerMixin):
         if y is not None:
             y = to_ndarray(y)
 
-        uni_val = False
+        uni_val = False       #初始化为bool干嘛
         if not np.issubdtype(X.dtype, np.number):     #如果X不是数值类型
             # transform raw data by woe
             transer = WOETransformer()
@@ -271,7 +271,7 @@ class Combiner(TransformerMixin):
         """
         X = to_ndarray(X)
 
-        # if is not continuous
+        # if is not continuous      #如果splits的维度大于1或者不是数值类型
         if splits.ndim > 1 or not np.issubdtype(splits.dtype, np.number):
             bins = self._raw_to_bin(X, splits)
 
@@ -300,11 +300,11 @@ class Combiner(TransformerMixin):
             array-like
         """
         # set default group to EMPTY_BIN
-        bins = np.full(X.shape, EMPTY_BIN)
+        bins = np.full(X.shape, EMPTY_BIN)       #生成指定个数同一个值组成的数组
         for i in range(len(splits)):
             group = splits[i]
             # if group is else, set all empty group to it
-            if isinstance(group, str) and group == ELSE_GROUP:
+            if isinstance(group, str) and group == ELSE_GROUP:      #如果group=='else'，但'else'肯定是str类型啊，前面判断无必要
                 bins[bins == EMPTY_BIN] = i
             else:
                 bins[np.isin(X, group)] = i
@@ -314,9 +314,9 @@ class Combiner(TransformerMixin):
     def _format_splits(self, splits, index = False):
         l = list()
         if np.issubdtype(splits.dtype, np.number):
-            sp_l = [-np.inf] + splits.tolist() + [np.inf]
+            sp_l = [-np.inf] + splits.tolist() + [np.inf]      #生成一个新的列表
             for i in range(len(sp_l) - 1):
-                l.append('['+str(sp_l[i])+' ~ '+str(sp_l[i+1])+')')
+                l.append('['+str(sp_l[i])+' ~ '+str(sp_l[i+1])+')')     #l类似[['2'~'5'),['5'~'8')]的样式
         else:
             for keys in splits:
                 if isinstance(keys, str) and keys == ELSE_GROUP:
@@ -326,7 +326,7 @@ class Combiner(TransformerMixin):
 
         if index:
             indexes = [i for i in range(len(l))]
-            l = ["{}.{}".format(ix, lab) for ix, lab in zip(indexes, l)]
+            l = ["{}.{}".format(ix, lab) for ix, lab in zip(indexes, l)]    #生成[ix.lab]列表
 
         return np.array(l)
 
@@ -386,7 +386,7 @@ class Combiner(TransformerMixin):
         Returns:
             dict
         """
-        splits = copy.deepcopy(self.splits_)
+        splits = copy.deepcopy(self.splits_)       #这里是deepcppy
 
         if format:
             if not isinstance(splits, dict):
@@ -415,11 +415,11 @@ class Combiner(TransformerMixin):
         start = 0
         l = list()
         for i in splits:
-            i = math.ceil(i)
-            l.append(value[start:i])
+            i = math.ceil(i)        #向下取整
+            l.append(value[start:i])    #l为二维数组 [[],[],]
             start = i
 
-        l.append(value[start:])
+        l.append(value[start:])     
 
         return np.array(l)
 
@@ -474,4 +474,4 @@ class GBDTTransformer(TransformerMixin):
         X = self.gbdt.apply(X)
         X = X.reshape(-1, X.shape[1])
         res = self.onehot.transform(X).toarray()
-        return res
+        return res 
