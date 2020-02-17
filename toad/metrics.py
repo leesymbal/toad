@@ -58,14 +58,14 @@ def KS_bucket(score, target, bucket = 10, method = 'quantile', **kwargs):
     good_total = df['good'].sum()
 
     df['bucket'] = 0
-    if bucket is False:
+    if bucket is False:     #如果令bucket=False，则把score赋值给bucket
         df['bucket'] = score
     elif isinstance(bucket, (list, np.ndarray, pd.Series)):
         df['bucket'] = bucket
     elif isinstance(bucket, int):
         df['bucket'] = merge(score, n_bins = bucket, method = method, **kwargs)
 
-    grouped = df.groupby('bucket', as_index = False)
+    grouped = df.groupby('bucket', as_index = False)     #as_index表示是否把bucket当成索引
 
     agg1 = pd.DataFrame()
     agg1['min'] = grouped.min()['score']
@@ -74,7 +74,7 @@ def KS_bucket(score, target, bucket = 10, method = 'quantile', **kwargs):
     agg1['goods'] = grouped.sum()['good']
     agg1['total'] = agg1['bads'] + agg1['goods']
 
-    agg2 = (agg1.sort_values(by = 'min')).reset_index(drop = True)
+    agg2 = (agg1.sort_values(by = 'min')).reset_index(drop = True)      #重置索引，并去除原索引
 
     agg2['bad_rate'] = agg2['bads'] / agg2['total']
     agg2['good_rate'] = agg2['goods'] / agg2['total']
