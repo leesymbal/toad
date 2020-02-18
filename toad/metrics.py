@@ -65,7 +65,7 @@ def KS_bucket(score, target, bucket = 10, method = 'quantile', **kwargs):
     elif isinstance(bucket, int):
         df['bucket'] = merge(score, n_bins = bucket, method = method, **kwargs)
 
-    grouped = df.groupby('bucket', as_index = False)     #as_index表示是否把bucket当成索引
+    grouped = df.groupby('bucket', as_index = False)     #as_index表示是否把bucket当成索引,默认true
 
     agg1 = pd.DataFrame()
     agg1['min'] = grouped.min()['score']
@@ -86,8 +86,8 @@ def KS_bucket(score, target, bucket = 10, method = 'quantile', **kwargs):
 
     agg2['cum_bads'] = agg2['bads'].cumsum()
     agg2['cum_goods'] = agg2['goods'].cumsum()
-
-    agg2['cum_bads_prop'] = agg2['cum_bads'] / bad_total
+ 
+    agg2['cum_bads_prop'] = agg2['cum_bads'] / bad_total         
     agg2['cum_goods_prop'] = agg2['cum_goods'] / good_total
 
 
@@ -102,16 +102,16 @@ def KS_by_col(df, by='feature', score='score', target='target'):
     pass
 
 
-def SSE(y_pred, y):
+def SSE(y_pred, y):     
     """sum of squares due to error
     """
-    return np.sum((y_pred - y) ** 2)
+    return np.sum((y_pred - y) ** 2)          #误差平方和
 
 
-def MSE(y_pred, y):
+def MSE(y_pred, y):                           
     """mean of squares due to error
     """
-    return np.mean((y_pred - y) ** 2)
+    return np.mean((y_pred - y) ** 2)         #误差平方的平均值
 
 
 def AIC(y_pred, y, k, llf = None):
@@ -197,7 +197,7 @@ def AUC(score, target):
 
 
 def _PSI(test, base):
-    test_prop = pd.Series(test).value_counts(normalize = True, dropna = False)
+    test_prop = pd.Series(test).value_counts(normalize = True, dropna = False)   #normalize=True则把个数除以总个数
     base_prop = pd.Series(base).value_counts(normalize = True, dropna = False)
 
     psi = np.sum((test_prop - base_prop) * np.log(test_prop / base_prop))
