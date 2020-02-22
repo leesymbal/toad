@@ -14,7 +14,7 @@ class StatsModel:
     def __init__(self, estimator = 'ols', criterion = 'aic', intercept = False):
         if isinstance(estimator, str):
             Est = self.get_estimator(estimator)
-            estimator = Est(fit_intercept = intercept,)
+            estimator = Est(fit_intercept = intercept,)        #intercept_=False表示截距为0 
 
         self.estimator = estimator
         self.intercept = intercept
@@ -29,7 +29,7 @@ class StatsModel:
             Ridge,
         )
 
-        ests = {
+        ests = {                     #将可选模型组装为字典
             'ols': LinearRegression,
             'lr': LogisticRegression,
             'lasso': Lasso,
@@ -38,7 +38,7 @@ class StatsModel:
 
         if name in ests:
             return ests[name]
-
+        #此处无须用else语句了 
         raise Exception('estimator {name} is not supported'.format(name = name))
 
 
@@ -49,11 +49,11 @@ class StatsModel:
         X = X.copy()
 
         if isinstance(X, pd.Series):
-            X = X.to_frame()
+            X = X.to_frame()           #frame比起series多了列名
 
         self.estimator.fit(X, y)
 
-        if hasattr(self.estimator, 'predict_proba'):
+        if hasattr(self.estimator, 'predict_proba'):       #如果模型支持输出概率
             pre = self.estimator.predict_proba(X)[:, 1]
         else:
             pre = self.estimator.predict(X)
@@ -94,12 +94,12 @@ class StatsModel:
     def t_value(self, pre, y, X, coef):
         n, k = X.shape
         mse = sum((y - pre) ** 2) / float(n - k)
-        nx = np.dot(X.T, X)
+        nx = np.dot(X.T, X)           #X是二维数组的话，np.dot则输出矩阵。如果是一维数组，则输出数值
 
-        if np.linalg.det(nx) == 0:
+        if np.linalg.det(nx) == 0:    #计算行列式值
             return np.nan
 
-        std_e = np.sqrt(mse * (np.linalg.inv(nx).diagonal()))
+        std_e = np.sqrt(mse * (np.linalg.inv(nx).diagonal()))    #np.linalg.inv矩阵求逆，diagonal()给出对角线元素
         return coef / std_e
 
     def p_value(self, t, n):
@@ -122,7 +122,7 @@ def stepwise(frame, target = 'target', estimator = 'ols', direction = 'both', cr
         estimator (str): model to use for stats
         direction (str): direction of stepwise, support 'forward', 'backward' and 'both', suggest 'both'
         criterion (str): criterion to statistic model, support 'aic', 'bic'
-        p_enter (float): threshold that will be used in 'forward' and 'both' to keep features
+        p_enter (float): threshold that will be used in 'forward' and 'both' to keep features     #保留特征的阀值
         p_remove (float): threshold that will be used in 'backward' to remove features
         intercept (bool): if have intercept
         p_value_enter (float): threshold that will be used in 'both' to remove features
@@ -140,7 +140,7 @@ def stepwise(frame, target = 'target', estimator = 'ols', direction = 'both', cr
         df = df.drop(columns = exclude)
 
     drop_list = []
-    remaining = df.columns.tolist()
+    remaining = df.columns.tolist()     #如果没有tolist(),只是index对象
 
     selected = []
 
@@ -153,37 +153,37 @@ def stepwise(frame, target = 'target', estimator = 'ols', direction = 'both', cr
     iter = -1
     while remaining:
         iter += 1
-        if max_iter and iter > max_iter:
+        if max_iter and iter > max_iter:     #迭代次数大于阀值则退出remaining
             break
 
         l = len(remaining)
         test_score = np.zeros(l)
-        test_res = np.empty(l, dtype = np.object)
+        test_res = np.empty(l, dtype = np.object)      #生成的是None组成的数组
 
         if direction is 'backward':
             for i in range(l):
                 test_res[i] = sm.stats(
-                    df[ remaining[:i] + remaining[i+1:] ],
+                    df[ remaining[:i] + remaining[i+1:] ],     #除去第i个特征
                     y,
                 )
                 test_score[i] = test_res[i]['criterion']
 
-            curr_ix = np.argmax(test_score * order)
+            curr_ix = np.argmax(test_score * order)      #np.argmax返回最大值所在的位置
             curr_score = test_score[curr_ix]
 
             if (curr_score - best_score) * order < p_remove:
-                break
+                break                                       #此处退出的是while循环
 
-            name = remaining.pop(curr_ix)
+            name = remaining.pop(curr_ix)        #删除该位置的特征并赋值给name
             drop_list.append(name)
 
-            best_score = curr_score
+            best_score = curr_score              
 
         # forward and both
         else:
             for i in range(l):
                 test_res[i] = sm.stats(
-                    df[ selected + [remaining[i]] ],
+                    df[ selected + [remaining[i]] ],       # 已有特征加第i个特征，注意remaining[i]外面必须有中括号
                     y,
                 )
                 test_score[i] = test_res[i]['criterion']
@@ -198,9 +198,9 @@ def stepwise(frame, target = 'target', estimator = 'ols', direction = 'both', cr
                 # early stop
                 if selected:
                     drop_list += remaining
-                    break
+                    break             #跳出while循环
 
-                continue
+                continue              #继续while循环
 
             selected.append(name)
             best_score = curr_score
@@ -212,7 +212,7 @@ def stepwise(frame, target = 'target', estimator = 'ols', direction = 'both', cr
                 for name in drop_names:
                     selected.remove(name)
                     drop_list.append(name)
-
+    #（此处已在while循环外）
     r = frame.drop(columns = drop_list)
 
     res = (r,)
@@ -243,7 +243,7 @@ def drop_empty(frame, threshold = 0.9, nan = None, return_drop = False,
         df = df.drop(columns = exclude)
 
     if nan is not None:
-        df = df.replace(nan, np.nan)
+        df = df.replace(nan, np.nan)            #将nan表示的值替换为np.nan
 
     if threshold < 1:
         threshold = len(df) * threshold
@@ -509,14 +509,14 @@ def select(frame, target = 'target', empty = 0.9, iv = 0.02, corr = 0.7,
     if corr is not False:
         weights = 'IV'
 
-        if iv is not False:
+        if iv is not False:     #如果iv存在，则weights=iv_list
             weights = iv_list
 
         frame, corr_drop = drop_corr(frame, target = target, threshold = corr, by = weights, return_drop = True, exclude = exclude)
 
     res = (frame,)
     if return_drop:
-        d = {
+        d = {                   #所有因为empty,iv,corr删除的特征组成一个字典
             'empty': empty_drop,
             'iv': iv_drop,
             'corr': corr_drop,
