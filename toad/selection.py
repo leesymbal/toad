@@ -246,7 +246,7 @@ def drop_empty(frame, threshold = 0.9, nan = None, return_drop = False,
         df = df.replace(nan, np.nan)            #将nan表示的值替换为np.nan
 
     if threshold < 1:
-        threshold = len(df) * threshold
+        threshold = len(df) * threshold         #len(df)得到df的特征长度
 
     drop_list = []
     for col in df:
@@ -282,9 +282,9 @@ def drop_var(frame, threshold = 0, return_drop = False, exclude = None):
         df = df.drop(columns = exclude)
 
     # numeric features only
-    df = df.select_dtypes(include = 'number')
+    df = df.select_dtypes(include = 'number')       #数值型特征才有方差
 
-    variances = np.var(df, axis = 0)
+    variances = np.var(df, axis = 0)                #分别计算各个特征的方差
     drop_list = df.columns[variances <= threshold]
 
     r = frame.drop(columns = drop_list)
@@ -312,13 +312,13 @@ def drop_corr(frame, target = None, threshold = 0.7, by = 'IV',
         DataFrame: selected dataframe
         array: list of feature names that has been dropped
     """
-    if not isinstance(by, (str, pd.Series)):
+    if not isinstance(by, (str, pd.Series)):      #如果by不是字符串或者数组类型，则转为pandas数组类型
         by = pd.Series(by, index = frame.columns)
 
     df = frame.copy()
 
     if exclude is not None:
-        exclude = exclude if isinstance(exclude, (list, np.ndarray)) else [exclude]
+        exclude = exclude if isinstance(exclude, (list, np.ndarray)) else [exclude]    #exclude需要转为数组形式
         df = df.drop(columns = exclude)
 
 
@@ -329,7 +329,7 @@ def drop_corr(frame, target = None, threshold = 0.7, by = 'IV',
     drops = []
 
     # get position who's corr greater than threshold
-    ix, cn = np.where(np.triu(corr.values, 1) > threshold)
+    ix, cn = np.where(np.triu(corr.values, 1) > threshold)     #np.triu(m,k)返回一个上三角矩阵,k越大，则0越多.这里ix是符合条件的行索引，cn为列
 
     # if has position
     if len(ix):
@@ -419,7 +419,7 @@ def drop_iv(frame, target = 'target', threshold = 0.02, return_drop = False,
 
     f, t = split_target(df, target)
 
-    l = len(f.columns)
+    l = len(f.columns)        #返回特征数，注意len(f)返回特征长度
     iv = np.zeros(l)
 
     for i in range(l):
